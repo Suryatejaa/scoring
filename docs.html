@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Indian BGM Keyboard Docs</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="docs-body">
+    <main class="docs-shell">
+      <header class="docs-header">
+        <a class="header-link" href="index.html">Back to app</a>
+        <p class="eyebrow">End user guide</p>
+        <h1>Make Your Own Indian BGM</h1>
+        <p>
+          Use this guide to play swaras, write key scripts, save tune ideas, and arrange layered
+          short-film background music on the timeline.
+        </p>
+      </header>
+
+      <nav class="docs-nav" aria-label="Docs sections">
+        <a href="#quick-start">Quick Start</a>
+        <a href="#keyboard">Keyboard</a>
+        <a href="#scripts">Scripts</a>
+        <a href="#notation">Notation</a>
+        <a href="#timeline">Timeline</a>
+        <a href="#compose">Compose</a>
+      </nav>
+
+      <section id="quick-start" class="docs-section">
+        <p class="eyebrow">Start here</p>
+        <h2>Quick Start</h2>
+        <ol>
+          <li>Choose a <strong>Raga</strong>, <strong>Instrument</strong>, and <strong>Root Shruti</strong>.</li>
+          <li>Click a script tab or create one with <strong>Add Script</strong>.</li>
+          <li>Type keys in <strong>Key Script</strong>, or play notes from your computer keyboard.</li>
+          <li>Adjust <strong>Pace ms</strong> for the gap between notes and <strong>Hold ms</strong> for note length.</li>
+          <li>Press <strong>Play</strong> to hear the selected script.</li>
+          <li>Add scripts to the <strong>Arrangement Timeline</strong> and place them like clips in a video editor.</li>
+        </ol>
+      </section>
+
+      <section id="keyboard" class="docs-section">
+        <p class="eyebrow">Swaras</p>
+        <h2>Keyboard Basics</h2>
+        <p>
+          The keyboard is arranged so every row starts with <strong>Sa</strong>. This keeps the layout easy
+          to understand while composing Indian melodies.
+        </p>
+        <div class="docs-grid">
+          <article>
+            <h3>Base rows</h3>
+            <p><code>Q A Z</code> start from <strong>Sa</strong> in different octaves.</p>
+            <p><code>W E R T Y U</code> continue the swara movement on the upper row.</p>
+          </article>
+          <article>
+            <h3>Komal and tivra notes</h3>
+            <p>Use <code>Shift</code> on Re, Ga, Dha, and Ni to reach komal variants.</p>
+            <p>Use <code>Alt</code> or <code>Option</code> on Ma to reach tivra Ma.</p>
+          </article>
+          <article>
+            <h3>Custom keys</h3>
+            <p>Empty keys can be assigned with <strong>Set</strong>. Click Set, then press the key whose swara you want to duplicate.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="scripts" class="docs-section">
+        <p class="eyebrow">Playback language</p>
+        <h2>Writing Key Scripts</h2>
+        <p>
+          A key script is a text version of your melody. Each token is one note, rest, or timing command.
+          Spaces separate notes.
+        </p>
+        <table class="docs-table">
+          <thead>
+            <tr>
+              <th>Pattern</th>
+              <th>Meaning</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Q W E</code></td>
+              <td>Play Q, then W, then E.</td>
+            </tr>
+            <tr>
+              <td><code>-</code></td>
+              <td>Add a rest or silence.</td>
+            </tr>
+            <tr>
+              <td><code>Shift+E</code></td>
+              <td>Play the shifted swara for that key.</td>
+            </tr>
+            <tr>
+              <td><code>Alt+R</code></td>
+              <td>Play the alternate swara where available.</td>
+            </tr>
+            <tr>
+              <td><code>G*3</code></td>
+              <td>Repeat G three times.</td>
+            </tr>
+            <tr>
+              <td><code>A@600/400</code></td>
+              <td>Play A with 600ms pace and 400ms hold.</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>Example:</p>
+        <pre><code>P { I I*2 F O I F O I A I I - A@600 I A</code></pre>
+      </section>
+
+      <section id="notation" class="docs-section">
+        <p class="eyebrow">For musicians</p>
+        <h2>Western and Swara Notation</h2>
+        <p>
+          The app shows the selected script in three forms: keyboard script, Western notes, and swaras.
+          You can edit Western or swara notation directly, and the app converts it back into playable key script.
+        </p>
+        <div class="docs-grid two">
+          <article>
+            <h3>Western notes</h3>
+            <p>Use notes like <code>C</code>, <code>Db</code>, <code>F</code>, <code>Ab</code>, and octave marks like <code>Db'</code>.</p>
+          </article>
+          <article>
+            <h3>Swaras</h3>
+            <p>Use <code>S r R g G m M P d D n N</code>. Add <code>'</code> for higher octave or <code>,</code> for lower octave.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="timeline" class="docs-section">
+        <p class="eyebrow">Arrangement</p>
+        <h2>Using the Timeline</h2>
+        <p>
+          The timeline works like a compact video editor. Add script clips, drag them in time, layer them
+          vertically, and play the whole arrangement.
+        </p>
+        <ul>
+          <li><strong>Add Active</strong> places the selected script onto the timeline.</li>
+          <li>Drag a clip left or right to change when it starts.</li>
+          <li>Drag a clip up or down to move it to another layer.</li>
+          <li>Use <strong>- / +</strong> zoom to stretch or compress the timeline view.</li>
+          <li>Use the triangle playhead and scrub bar to jump through the arrangement.</li>
+          <li>When Canvas is active, <strong>Space</strong> plays or pauses the timeline.</li>
+        </ul>
+      </section>
+
+      <section id="compose" class="docs-section">
+        <p class="eyebrow">Creative workflow</p>
+        <h2>Create Your Own Music</h2>
+        <ol>
+          <li>Pick an emotional goal: sad, devotional, suspense, mass, romantic, or heroic.</li>
+          <li>Choose a raga that matches the mood. For darker emotion, try Keeravani or Natabhairavi. For bright emotion, try Mohanam or Hamsadhwani.</li>
+          <li>Find a root shruti that feels close to the scene or reference track.</li>
+          <li>Start with a short 4 to 8 note motif. Repeat it with small changes.</li>
+          <li>Use rests. Silence makes sad and suspense cues feel more natural.</li>
+          <li>Layer a second script with a slower instrument such as Film Strings, Sarangi, or Synth Pad.</li>
+          <li>Save strong ideas as tunes so you can reload them later.</li>
+          <li>Record and export when the cue feels ready.</li>
+        </ol>
+      </section>
+    </main>
+  </body>
+</html>
