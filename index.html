@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Indian BGM Keyboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="top-bar" aria-label="Project controls">
+        <div class="brand-lockup">
+          <div class="brand-mark" aria-hidden="true">BGM</div>
+          <div>
+            <p class="eyebrow">Indian scoring workstation</p>
+            <h1>Indian BGM Keyboard</h1>
+            <p class="brand-subtitle">Raga scripts · layered timeline · swara notation</p>
+          </div>
+        </div>
+        <div class="transport">
+          <button id="recordBtn" class="danger" type="button">Record</button>
+          <button id="stopBtn" type="button">Stop</button>
+          <button id="exportBtn" type="button" disabled>Export</button>
+        </div>
+      </section>
+
+      <aside class="saved-sidebar" aria-label="Saved tunes">
+        <div class="sidebar-head">
+          <div>
+            <p class="eyebrow">Library</p>
+            <strong>Saved Tunes</strong>
+          </div>
+          <button
+            id="sidebarToggle"
+            class="sidebar-toggle"
+            type="button"
+            aria-label="Collapse saved tunes"
+            aria-expanded="true"
+          >
+            ‹
+          </button>
+        </div>
+        <div class="saved-tunes" id="savedTunes" aria-label="Saved tunes"></div>
+      </aside>
+
+      <section class="control-surface" aria-label="Music controls">
+        <div class="panel">
+          <label for="ragaSelect">Raga</label>
+          <select id="ragaSelect"></select>
+        </div>
+
+        <div class="panel">
+          <label for="instrumentSelect">Instrument</label>
+          <select id="instrumentSelect"></select>
+        </div>
+
+        <div class="panel">
+          <label for="rootSelect">Root Shruti</label>
+          <select id="rootSelect"></select>
+        </div>
+
+        <div class="panel compact">
+          <label for="octaveShift">Octave</label>
+          <div class="stepper">
+            <button id="octaveDown" type="button" aria-label="Lower octave">-</button>
+            <output id="octaveShift">0</output>
+            <button id="octaveUp" type="button" aria-label="Raise octave">+</button>
+          </div>
+        </div>
+
+        <div class="panel compact">
+          <label for="tempo">Tempo</label>
+          <input id="tempo" type="range" min="54" max="168" value="92" />
+          <output id="tempoOut">92</output>
+        </div>
+      </section>
+
+      <section class="sequencer" aria-label="Key sequencer">
+        <div class="sequence-panel script">
+          <label for="sequenceInput">Key Script</label>
+          <div class="script-carousel" id="scriptCarousel" aria-label="Script lanes"></div>
+          <textarea id="sequenceInput" spellcheck="false">Shift+Y Shift+U Shift+W R Shift+E</textarea>
+          <div class="notation-readout" id="sequenceNotes" aria-live="polite">
+            <label class="notation-line" for="westernInput">
+              <span>Western</span>
+              <textarea id="westernInput" class="notation-input" spellcheck="false"></textarea>
+            </label>
+            <label class="notation-line" for="swaraInput">
+              <span>Swaras</span>
+              <textarea id="swaraInput" class="notation-input" spellcheck="false"></textarea>
+            </label>
+          </div>
+        </div>
+        <div class="sequence-panel">
+          <label for="sequencePace">Pace ms</label>
+          <input id="sequencePace" type="number" min="60" max="4000" step="10" value="360" />
+          <label for="sequenceHold">Hold ms</label>
+          <input id="sequenceHold" type="number" min="30" max="4000" step="10" value="190" />
+        </div>
+        <div class="sequence-actions">
+          <button id="playSequenceBtn" type="button">Play</button>
+          <button id="stopSequenceBtn" type="button">Stop</button>
+          <button id="addScriptBtn" type="button">Add Script</button>
+          <button id="deleteScriptBtn" type="button">Delete Script</button>
+          <input id="tuneNameInput" type="text" placeholder="Tune name" aria-label="Tune name" />
+          <button id="saveTuneBtn" type="button">Save Tune</button>
+        </div>
+      </section>
+
+      <section class="timeline-panel" aria-label="Script sequence arranger">
+        <div class="timeline-head">
+          <div>
+            <p class="eyebrow">Sequence</p>
+            <strong>Arrangement Timeline</strong>
+          </div>
+          <div class="timeline-actions">
+            <button id="timelinePlayPauseBtn" class="timeline-head-play" type="button" aria-label="Play timeline">▶</button>
+            <output id="timelineTime" class="timeline-head-time">0.0s</output>
+            <div class="timeline-zoom" role="group" aria-label="Timeline zoom">
+              <button id="timelineZoomOutBtn" type="button" aria-label="Zoom timeline out">−</button>
+              <output id="timelineZoom">100%</output>
+              <button id="timelineZoomInBtn" type="button" aria-label="Zoom timeline in">+</button>
+            </div>
+            <div class="view-toggle" role="group" aria-label="Workspace view">
+              <button id="canvasViewBtn" type="button">Canvas</button>
+              <button id="keysViewBtn" type="button">Keys</button>
+            </div>
+            <button id="addTimelineItemBtn" type="button">Add Active</button>
+            <button id="clearTimelineBtn" type="button">Clear</button>
+          </div>
+        </div>
+        <div class="timeline-transport">
+          <div class="timeline-scrub-shell" id="timelineScroll">
+            <div class="timeline-playhead" id="timelinePlayhead" aria-hidden="true"></div>
+            <div class="timeline-ruler" id="timelineRuler"></div>
+            <div class="timeline-track" id="timelineTrack" aria-label="Draggable script timeline"></div>
+            <input id="timelineScrub" type="range" min="0" max="8000" step="100" value="0" aria-label="Timeline position" />
+          </div>
+        </div>
+      </section>
+
+      <section class="performance" aria-label="Performance surface">
+        <div class="keyboard-wrap">
+          <div class="keyboard-row upper" id="upperKeys"></div>
+          <div class="keyboard-row home" id="homeKeys"></div>
+          <div class="keyboard-row lower" id="lowerKeys"></div>
+        </div>
+
+        <aside class="side-rack" aria-label="Scoring layers">
+          <button id="droneBtn" type="button" class="layer-button">
+            <span>Tanpura Drone</span>
+            <strong>Off</strong>
+          </button>
+          <button id="rhythmBtn" type="button" class="layer-button">
+            <span>Rhythm Loop</span>
+            <strong>Off</strong>
+          </button>
+          <select id="rhythmSelect" aria-label="Rhythm pattern"></select>
+          <div class="status-card">
+            <span>Now Playing</span>
+            <strong id="nowPlaying">Ready</strong>
+          </div>
+        </aside>
+      </section>
+
+      <section class="phrase-bank" aria-label="Film cue triggers">
+        <button data-cue="suspense" type="button">Suspense Sting</button>
+        <button data-cue="emotion" type="button">Emotional Rise</button>
+        <button data-cue="devotion" type="button">Devotional Bell</button>
+        <button data-cue="mass" type="button">Mass Hit</button>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
