@@ -408,6 +408,7 @@ input[type="text"] {
   display: grid;
   grid-template-rows: auto auto;
   align-content: start;
+  align-self: start;
   gap: 2px;
   padding: 2px;
   min-width: 0;
@@ -470,6 +471,24 @@ input[type="text"] {
 .timeline-actions button {
   min-height: 26px;
   padding: 0 8px;
+}
+
+.timeline-actions select,
+.timeline-actions input[type="text"] {
+  min-height: 28px;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.timeline-actions select {
+  width: 132px;
+  padding: 0 8px;
+}
+
+.timeline-actions input[type="text"] {
+  width: 150px;
+  padding: 0 9px;
 }
 
 .timeline-head-play {
@@ -575,6 +594,34 @@ input[type="text"] {
   display: none;
 }
 
+body.canvas-view {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.canvas-view .app-shell {
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.canvas-view .saved-sidebar {
+  grid-row: 2 / -1;
+}
+
+.canvas-view .timeline-panel {
+  grid-template-rows: auto minmax(0, 1fr);
+  align-self: stretch;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.canvas-view .timeline-transport {
+  min-height: 0;
+  overflow: hidden;
+}
+
 .keys-view .timeline-transport {
   display: none;
 }
@@ -584,8 +631,9 @@ input[type="text"] {
 }
 
 .canvas-view .timeline-scrub-shell {
-  min-height: 360px;
-  max-height: calc(100vh - 360px);
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
 }
 
 .timeline-playhead {

@@ -191,6 +191,8 @@ const savedTunesStorageKey = "emusic-saved-tunes";
 const scriptLanesStorageKey = "emusic-script-lanes";
 const sidebarCollapsedStorageKey = "emusic-sidebar-collapsed";
 const timelineStorageKey = "emusic-arrangement-timeline";
+const sequencesStorageKey = "emusic-saved-sequences";
+const activeSequenceStorageKey = "emusic-active-sequence";
 const workspaceViewStorageKey = "emusic-workspace-view";
 const timelineZoomStorageKey = "emusic-timeline-zoom";
 const timelineDefaultPxPerMs = 0.08;
@@ -214,6 +216,9 @@ let sequencePlaying = false;
 let sequenceRunningLanes = new Set();
 let savedTunes = [];
 let pendingDeleteTuneId = "";
+let savedSequences = [];
+let activeSequenceId = "";
+let suppressSequencePersistence = false;
 let scriptLanes = [];
 let activeScriptLaneId = "";
 let editingScriptLaneId = "";
@@ -263,6 +268,11 @@ const els = {
   timelineZoomOut: document.querySelector("#timelineZoomOutBtn"),
   timelineZoomIn: document.querySelector("#timelineZoomInBtn"),
   timelineZoom: document.querySelector("#timelineZoom"),
+  sequenceSelect: document.querySelector("#sequenceSelect"),
+  sequenceName: document.querySelector("#sequenceNameInput"),
+  newSequence: document.querySelector("#newSequenceBtn"),
+  saveSequence: document.querySelector("#saveSequenceBtn"),
+  deleteSequence: document.querySelector("#deleteSequenceBtn"),
   timelineScrub: document.querySelector("#timelineScrub"),
   timelineTime: document.querySelector("#timelineTime"),
   clearTimeline: document.querySelector("#clearTimelineBtn"),
@@ -492,6 +502,187 @@ function loadTimelineItems() {
 
 function saveTimelineItems() {
   localStorage.setItem(timelineStorageKey, JSON.stringify(timelineItems));
+  persistActiveSequenceSnapshot();
+}
+
+function cloneSequenceValue(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function normalizeTimelineItem(item, lanes = scriptLanes) {
+  const laneIndex = lanes.findIndex((lane) => lane.id === item?.laneId);
+  return {
+    id: item?.id || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    laneId: item?.laneId || lanes[0]?.id || "",
+    startMs: Math.max(0, Number(item?.startMs) || 0),
+    trackIndex: Math.max(0, Number.isInteger(item?.trackIndex) ? item.trackIndex : laneIndex),
+  };
+}
+
+function normalizeSavedSequence(sequence = {}, index = 0) {
+  if (Array.isArray(sequence.scriptLanes)) {
+    sequence.scriptLanes.map(normalizeScriptLane).forEach((lane) => {
+      if (!scriptLanes.some((existing) => existing.id === lane.id)) scriptLanes.push(lane);
+    });
+  }
+  return {
+    id: sequence.id || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    name: sequence.name || `Sequence ${index + 1}`,
+    timelineItems: Array.isArray(sequence.timelineItems)
+      ? sequence.timelineItems
+          .filter((item) => item?.laneId && scriptLanes.some((lane) => lane.id === item.laneId))
+          .map((item) => normalizeTimelineItem(item, scriptLanes))
+      : [],
+    createdAt: sequence.createdAt || new Date().toISOString(),
+    updatedAt: sequence.updatedAt || new Date().toISOString(),
+  };
+}
+
+function currentSequenceSnapshot(name = els.sequenceName?.value.trim()) {
+  return normalizeSavedSequence(
+    {
+      id: activeSequenceId || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      name: name || activeSequence()?.name || `Sequence ${savedSequences.length + 1}`,
+      timelineItems: cloneSequenceValue(timelineItems),
+      createdAt: activeSequence()?.createdAt,
+      updatedAt: new Date().toISOString(),
+    },
+    savedSequences.length,
+  );
+}
+
+function activeSequence() {
+  return savedSequences.find((sequence) => sequence.id === activeSequenceId);
+}
+
+function persistSavedSequences() {
+  localStorage.setItem(sequencesStorageKey, JSON.stringify(savedSequences));
+  if (activeSequenceId) localStorage.setItem(activeSequenceStorageKey, activeSequenceId);
+}
+
+function persistActiveSequenceSnapshot() {
+  if (suppressSequencePersistence || !activeSequenceId || !savedSequences.length) return;
+  const index = savedSequences.findIndex((sequence) => sequence.id === activeSequenceId);
+  if (index < 0) return;
+  savedSequences[index] = currentSequenceSnapshot(savedSequences[index].name);
+  persistSavedSequences();
+  renderSequenceControls();
+}
+
+function removeScriptFromSavedSequences(laneId) {
+  savedSequences = savedSequences.map((sequence) => ({
+    ...sequence,
+    timelineItems: sequence.timelineItems.filter((item) => item.laneId !== laneId),
+    updatedAt: new Date().toISOString(),
+  }));
+  persistSavedSequences();
+}
+
+function applySequence(sequence) {
+  const normalized = normalizeSavedSequence(sequence);
+  suppressSequencePersistence = true;
+  stopSequence(false);
+  timelineItems = cloneSequenceValue(normalized.timelineItems).map((item) => normalizeTimelineItem(item, scriptLanes));
+  activeSequenceId = normalized.id;
+  saveTimelineItems();
+  suppressSequencePersistence = false;
+  localStorage.setItem(activeSequenceStorageKey, activeSequenceId);
+  renderScriptCarousel();
+  renderTimeline();
+  renderSequenceControls();
+  updateSequenceReadout();
+}
+
+function loadSavedSequences() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(sequencesStorageKey) ?? "[]");
+    savedSequences = Array.isArray(saved) ? saved.map(normalizeSavedSequence) : [];
+    saveScriptLanes();
+  } catch {
+    localStorage.removeItem(sequencesStorageKey);
+    savedSequences = [];
+  }
+
+  if (!savedSequences.length) {
+    savedSequences = [currentSequenceSnapshot("Sequence 1")];
+  }
+  activeSequenceId =
+    localStorage.getItem(activeSequenceStorageKey) &&
+    savedSequences.some((sequence) => sequence.id === localStorage.getItem(activeSequenceStorageKey))
+      ? localStorage.getItem(activeSequenceStorageKey)
+      : savedSequences[0].id;
+  persistSavedSequences();
+  applySequence(activeSequence());
+}
+
+function renderSequenceControls() {
+  if (!els.sequenceSelect) return;
+  const selectedId = els.sequenceSelect.value || activeSequenceId;
+  els.sequenceSelect.innerHTML = "";
+  savedSequences.forEach((sequence) => {
+    const option = document.createElement("option");
+    option.value = sequence.id;
+    option.textContent = sequence.name;
+    els.sequenceSelect.append(option);
+  });
+  els.sequenceSelect.value = savedSequences.some((sequence) => sequence.id === selectedId) ? selectedId : activeSequenceId;
+  if (els.sequenceName && document.activeElement !== els.sequenceName) {
+    els.sequenceName.value = activeSequence()?.name || "";
+  }
+}
+
+function saveCurrentSequence() {
+  syncActiveScriptLane();
+  const snapshot = currentSequenceSnapshot();
+  const index = savedSequences.findIndex((sequence) => sequence.id === snapshot.id);
+  if (index >= 0) {
+    savedSequences[index] = snapshot;
+  } else {
+    savedSequences.push(snapshot);
+  }
+  activeSequenceId = snapshot.id;
+  persistSavedSequences();
+  renderSequenceControls();
+  els.nowPlaying.textContent = `Saved ${snapshot.name}`;
+}
+
+function createNewSequence() {
+  saveCurrentSequence();
+  const name = `Sequence ${savedSequences.length + 1}`;
+  const sequence = normalizeSavedSequence({
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    name,
+    timelineItems: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+  savedSequences.push(sequence);
+  activeSequenceId = sequence.id;
+  persistSavedSequences();
+  applySequence(sequence);
+  els.nowPlaying.textContent = `Created ${name}`;
+}
+
+function switchSavedSequence(id) {
+  if (id === activeSequenceId) return;
+  saveCurrentSequence();
+  const sequence = savedSequences.find((item) => item.id === id);
+  if (!sequence) return;
+  applySequence(sequence);
+  els.nowPlaying.textContent = `Loaded ${sequence.name}`;
+}
+
+function deleteCurrentSequence() {
+  if (savedSequences.length <= 1) {
+    els.nowPlaying.textContent = "Keep at least one sequence";
+    return;
+  }
+  const deleted = activeSequence();
+  savedSequences = savedSequences.filter((sequence) => sequence.id !== activeSequenceId);
+  activeSequenceId = savedSequences[0].id;
+  persistSavedSequences();
+  applySequence(activeSequence());
+  els.nowPlaying.textContent = deleted ? `Deleted ${deleted.name}` : "Sequence deleted";
 }
 
 function clampTimelineZoom(value) {
@@ -570,6 +761,7 @@ function deleteScriptLane(id = activeScriptLaneId) {
   if (currentIndex < 0) return;
   scriptLanes = scriptLanes.filter((lane) => lane.id !== id);
   timelineItems = timelineItems.filter((item) => item.laneId !== id);
+  removeScriptFromSavedSequences(id);
   editingScriptLaneId = editingScriptLaneId === id ? "" : editingScriptLaneId;
   pendingDeleteScriptLaneId = pendingDeleteScriptLaneId === id ? "" : pendingDeleteScriptLaneId;
   if (activeScriptLaneId === id) {
@@ -2201,6 +2393,15 @@ function bindEvents() {
   els.playTimeline.addEventListener("click", toggleTimelinePlayback);
   els.timelineZoomOut.addEventListener("click", () => setTimelineZoom(timelinePxPerMs / 1.25));
   els.timelineZoomIn.addEventListener("click", () => setTimelineZoom(timelinePxPerMs * 1.25));
+  els.sequenceSelect.addEventListener("change", () => switchSavedSequence(els.sequenceSelect.value));
+  els.sequenceName.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    saveCurrentSequence();
+  });
+  els.newSequence.addEventListener("click", createNewSequence);
+  els.saveSequence.addEventListener("click", saveCurrentSequence);
+  els.deleteSequence.addEventListener("click", deleteCurrentSequence);
   els.timelineScrub.addEventListener("input", () => setTimelinePlayhead(els.timelineScrub.value, true));
   els.timelineScroll.addEventListener("wheel", handleTimelineWheel, { passive: false });
   els.clearTimeline.addEventListener("click", clearTimeline);
@@ -2242,6 +2443,7 @@ function init() {
   loadSavedTunes();
   loadScriptLanes();
   loadTimelineItems();
+  loadSavedSequences();
   loadTimelineZoom();
   loadSidebarState();
   loadWorkspaceView();

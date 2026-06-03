@@ -42,8 +42,10 @@ http://localhost:4173/
 4. Save useful tunes into the library.
 5. Single-click a saved tune to create a new script from it.
 6. Add scripts to the sequence timeline.
-7. Drag clips horizontally for timing and vertically for layers.
-8. Use the timeline playhead, zoom controls, and spacebar playback to arrange the cue.
+7. Save the sequence to preserve the timeline arrangement.
+8. Create multiple sequences for alternate arrangements using the same global scripts.
+9. Drag clips horizontally for timing and vertically for layers.
+10. Use the timeline playhead, zoom controls, and spacebar playback to arrange the cue.
 
 ## Keyboard Script Notes
 
@@ -72,7 +74,7 @@ P { I I*2 F O I F O I A I I
 
 ## Storage
 
-The app stores user preferences, saved tunes, script lanes, custom key assignments, sidebar state, workspace view, timeline clips, and timeline zoom in browser `localStorage`.
+The app stores user preferences, saved tunes, saved sequences, script lanes, custom key assignments, sidebar state, workspace view, timeline clips, and timeline zoom in browser `localStorage`.
 
 ## Status
 
