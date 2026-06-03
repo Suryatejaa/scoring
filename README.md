@@ -40,9 +40,10 @@ http://localhost:4173/
 2. Type or play a key script.
 3. Review or edit the generated Western and swara notation.
 4. Save useful tunes into the library.
-5. Add scripts to the sequence timeline.
-6. Drag clips horizontally for timing and vertically for layers.
-7. Use the timeline playhead, zoom controls, and spacebar playback to arrange the cue.
+5. Single-click a saved tune to create a new script from it.
+6. Add scripts to the sequence timeline.
+7. Drag clips horizontally for timing and vertically for layers.
+8. Use the timeline playhead, zoom controls, and spacebar playback to arrange the cue.
 
 ## Keyboard Script Notes
 

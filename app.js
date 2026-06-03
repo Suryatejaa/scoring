@@ -122,6 +122,68 @@ const builtInTunes = [
     hold: 420,
     createdAt: "2026-06-03T00:00:00.000Z",
   },
+  {
+    id: "builtin-orbital-piano-1",
+    name: "Orbital Piano 1",
+    script:
+      "Y - D -@900 Y - D -@900 U - D -@900 U - D -@900 A - D -@900 A - D -@900 S - D -@900 S - D -@900",
+    raga: "Kalyani",
+    instrument: "Bansuri",
+    root: "C",
+    octaveShift: 0,
+    pace: 270,
+    hold: 460,
+    createdAt: "2026-06-03T00:00:00.000Z",
+  },
+  {
+    id: "builtin-orbital-piano-2",
+    name: "Orbital Piano 2",
+    script:
+      "Y - D - Y - Y - D - Y - U - D - U - U - D - U - A - D - A - A - D - A - S - D - S - S - D - S",
+    raga: "Kalyani",
+    instrument: "Bansuri",
+    root: "C",
+    octaveShift: 0,
+    pace: 260,
+    hold: 360,
+    createdAt: "2026-06-03T00:00:00.000Z",
+  },
+  {
+    id: "builtin-orbital-long-f",
+    name: "Orbital Long F",
+    script: "R -@850",
+    raga: "Kalyani",
+    instrument: "Bansuri",
+    root: "C",
+    octaveShift: 0,
+    pace: 470,
+    hold: 670,
+    createdAt: "2026-06-03T00:00:00.000Z",
+  },
+  {
+    id: "builtin-orbital-long-g",
+    name: "Orbital Long G",
+    script: "T -@850",
+    raga: "Kalyani",
+    instrument: "Bansuri",
+    root: "C",
+    octaveShift: 0,
+    pace: 470,
+    hold: 670,
+    createdAt: "2026-06-03T00:00:00.000Z",
+  },
+  {
+    id: "builtin-orbital-long-a",
+    name: "Orbital Long A",
+    script: "Y -@850",
+    raga: "Kalyani",
+    instrument: "Bansuri",
+    root: "C",
+    octaveShift: 0,
+    pace: 470,
+    hold: 670,
+    createdAt: "2026-06-03T00:00:00.000Z",
+  },
 ];
 const customAssignmentStorageKey = "emusic-custom-key-assignments";
 const userPrefsStorageKey = "emusic-user-preferences";
@@ -885,6 +947,31 @@ function loadTune(id) {
   els.nowPlaying.textContent = `Loaded ${tune.name}`;
 }
 
+function addTuneAsScript(id) {
+  const tune = savedTunes.find((item) => item.id === id);
+  if (!tune) return;
+  syncActiveScriptLane();
+  const fallback = editorContext();
+  const lane = createScriptLane(tune.name, tune.script, {
+    raga: ragas[tune.raga] ? tune.raga : fallback.raga,
+    instrument: instruments[tune.instrument] ? tune.instrument : fallback.instrument,
+    root: roots[tune.root] ? tune.root : fallback.root,
+    octaveShift: Number.isInteger(tune.octaveShift) ? tune.octaveShift : 0,
+    pace: Math.max(60, Number(tune.pace) || 360),
+    hold: Math.max(30, Number(tune.hold) || 190),
+  });
+  scriptLanes.push(lane);
+  activeScriptLaneId = lane.id;
+  pendingDeleteTuneId = "";
+  pendingDeleteScriptLaneId = "";
+  applyLaneToEditor(lane);
+  saveScriptLanes();
+  renderScriptCarousel();
+  renderTimeline();
+  saveUserPreferences();
+  els.nowPlaying.textContent = `Added script ${tune.name}`;
+}
+
 function editTune(id) {
   const tune = savedTunes.find((item) => item.id === id);
   if (!tune) return;
@@ -971,7 +1058,7 @@ function renderSavedTunes() {
     loadButton.title = tune.script;
     loadButton.addEventListener("click", () => {
       pendingDeleteTuneId = "";
-      loadTune(tune.id);
+      addTuneAsScript(tune.id);
       renderSavedTunes();
     });
 
