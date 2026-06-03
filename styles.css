@@ -1314,6 +1314,22 @@ pre {
     grid-template-columns: 1fr;
   }
 
+  .canvas-view .app-shell {
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+  }
+
+  .canvas-view .saved-sidebar {
+    grid-row: 2;
+    min-height: 0;
+    max-height: 160px;
+    overflow: hidden;
+  }
+
+  .canvas-view .timeline-panel {
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 0;
+  }
+
   .sequence-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
