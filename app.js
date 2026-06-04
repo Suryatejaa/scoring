@@ -36,6 +36,19 @@ const instrumentGroups = {
   Drums: ["Tabla", "Mridangam", "Dholak", "Cinematic Drums"],
 };
 
+const promptGenres = [
+  "Sad / Heart Melting",
+  "Suspense",
+  "Devotional",
+  "Romantic",
+  "Mass / Hero Entry",
+  "Mystery",
+  "Village / Folk",
+  "Hopeful",
+  "Tragedy",
+  "Epic / Cinematic",
+];
+
 const roots = {
   C: 261.63,
   "C#": 277.18,
@@ -290,6 +303,20 @@ const els = {
   recordBtn: document.querySelector("#recordBtn"),
   stopBtn: document.querySelector("#stopBtn"),
   exportBtn: document.querySelector("#exportBtn"),
+  promptBtn: document.querySelector("#promptBtn"),
+  promptModal: document.querySelector("#promptModal"),
+  promptClose: document.querySelector("#promptCloseBtn"),
+  promptGenerateMode: document.querySelector("#promptGenerateModeBtn"),
+  promptLoadMode: document.querySelector("#promptLoadModeBtn"),
+  promptGenerateForm: document.querySelector("#promptGenerateForm"),
+  promptLoadForm: document.querySelector("#promptLoadForm"),
+  promptGenre: document.querySelector("#promptGenreSelect"),
+  promptInstruments: document.querySelector("#promptInstrumentSelect"),
+  promptScene: document.querySelector("#promptSceneInput"),
+  promptOutputPanel: document.querySelector("#promptOutputPanel"),
+  promptOutput: document.querySelector("#promptOutput"),
+  copyPrompt: document.querySelector("#copyPromptBtn"),
+  promptJson: document.querySelector("#promptJsonInput"),
   nowPlaying: document.querySelector("#nowPlaying"),
 };
 
@@ -342,6 +369,49 @@ function populateInstrumentSelect() {
     });
     els.instrument.append(group);
   });
+}
+
+function populatePromptControls() {
+  els.promptGenre.innerHTML = "";
+  promptGenres.forEach((value, index) => {
+    const item = document.createElement("label");
+    item.className = "genre-check";
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    radio.value = value;
+    radio.name = "promptGenre";
+    radio.checked = index === 0;
+    item.append(radio, document.createTextNode(value));
+    els.promptGenre.append(item);
+  });
+  els.promptInstruments.innerHTML = "";
+  Object.entries(instrumentGroups).forEach(([label, values]) => {
+    const group = document.createElement("div");
+    group.className = "instrument-check-group";
+    const heading = document.createElement("strong");
+    heading.textContent = label;
+    group.append(heading);
+    values.forEach((value) => {
+      if (!instruments[value]) return;
+      const item = document.createElement("label");
+      item.className = "instrument-check";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = value;
+      checkbox.name = "promptInstrument";
+      item.append(checkbox, document.createTextNode(value));
+      group.append(item);
+    });
+    els.promptInstruments.append(group);
+  });
+}
+
+function selectedPromptInstruments() {
+  return [...els.promptInstruments.querySelectorAll('input[name="promptInstrument"]:checked')].map((input) => input.value);
+}
+
+function selectedPromptGenre() {
+  return els.promptGenre.querySelector('input[name="promptGenre"]:checked')?.value || promptGenres[0];
 }
 
 function loadCustomAssignments() {
@@ -494,6 +564,7 @@ function loadTimelineItems() {
             laneId: item.laneId,
             startMs: Math.max(0, Number(item.startMs) || 0),
             trackIndex: Math.max(0, Number.isInteger(item.trackIndex) ? item.trackIndex : laneIndex),
+            muted: Boolean(item.muted),
           };
         })
       : [];
@@ -1327,6 +1398,450 @@ function addTuneAsScript(id) {
   renderTimeline();
   saveUserPreferences();
   els.nowPlaying.textContent = `Added script ${tune.name}`;
+}
+
+function swaraReferenceLines() {
+  return swaras
+    .map((swara) => `${swara.notation}: ${swara.note} (${swara.fullName}), semitone ${swara.step}`)
+    .join("\n");
+}
+
+function keyReferenceLines() {
+  const context = { ...defaultLaneContext(), root: "C", octaveShift: 0 };
+  const rows = ["upper", "home", "lower"];
+  return rows
+    .map((row) => {
+      const keys = keyRows[row]
+        .map((key, index) => {
+          const base = degreeForKey(row, index, {});
+          if (!base) return `${key}: empty/custom slot`;
+          const shifted = degreeForKey(row, index, { shiftKey: true });
+          const alt = degreeForKey(row, index, { altKey: true });
+          const parts = [`${key}=${noteLabel(base.step, base.octave, context)} / ${westernNoteLabel(base.step, base.octave, context)}`];
+          if (!assignableKeys.has(key) && shifted && shifted.step !== base.step) {
+            parts.push(`Shift+${key}=${noteLabel(shifted.step, shifted.octave, context)}`);
+          }
+          if (!assignableKeys.has(key) && alt && alt.step !== base.step) {
+            parts.push(`Alt+${key}=${noteLabel(alt.step, alt.octave, context)}`);
+          }
+          return parts.join(", ");
+        })
+        .join("; ");
+      return `${row.toUpperCase()} ROW: ${keys}`;
+    })
+    .join("\n");
+}
+
+function buildScoringPrompt({ genre, selectedInstruments, scene }) {
+  const sample = {
+    project: "Scene cue name",
+    notes: "Short explanation of the musical idea, mood, and where layers should enter.",
+    tunes: [
+      {
+        name: "Main Santoor Motif",
+        raga: "Keeravani",
+        root: "C",
+        instrument: "Santoor",
+        octaveShift: 0,
+        pace: 360,
+        hold: 420,
+        script: "Q W Shift+E - R T R - Q",
+        western: "C D Eb - F G F - C",
+        swaras: "S R g - m P m - S",
+      },
+      {
+        name: "Low String Drone Pulse",
+        raga: "Keeravani",
+        root: "C",
+        instrument: "Film Strings",
+        octaveShift: -1,
+        pace: 700,
+        hold: 900,
+        script: "Q - T - Q - Shift+Y -",
+        western: "C - G - C - Ab -",
+        swaras: "S - P - S - d -",
+      },
+    ],
+    sequence: {
+      name: "Scene cue name arrangement",
+      notes: "Layer the motif first, then bring the pulse in slightly before the motif ends.",
+      clips: [
+        { tune: "Main Santoor Motif", startMs: 0, trackIndex: 0, repeat: 2, gapMs: 300 },
+        { tune: "Low String Drone Pulse", startMs: 1200, trackIndex: 1, repeat: 3, intervalMs: 3600 },
+      ],
+    },
+  };
+
+  return `You are composing for SCORING, an Indian short-film BGM workstation. Return ONLY valid JSON, with no markdown, no code fences, and no explanation outside JSON.
+
+USER REQUEST
+Genre: ${genre}
+Requested instruments: ${selectedInstruments.join(", ")}
+Scene / situation: ${scene}
+
+WHAT SCORING IS
+SCORING is a browser music tool for Indian BGM/RR/short-film scoring. It plays text scripts as keyboard notes. Each script lane has its own raga, instrument, root shruti, octave shift, pace, and hold. Users can layer scripts on a timeline like a video editor.
+
+OUTPUT GOAL
+Create ${Math.max(1, selectedInstruments.length)} to ${Math.max(3, selectedInstruments.length * 2)} playable script tunes that fit the scene. Use the requested instruments. Keep each script musically useful as a layer: motif, counter motif, drone/pulse, long emotional notes, rhythmic support, or phrase answer. Also create a sequence arrangement that places those tunes on the SCORING timeline with starts, tracks, overlaps, and repeats.
+
+AVAILABLE RAGAS AND SEMITONES FROM SA
+${Object.entries(ragas)
+  .map(([name, steps]) => `${name}: [${steps.join(", ")}]`)
+  .join("\n")}
+
+RAGA GUIDANCE
+- Sad / heart melting: Keeravani, Natabhairavi, Charukesi, Hindolam.
+- Suspense / mystery: Keeravani, Charukesi, Hindolam, Natabhairavi.
+- Devotional / hopeful: Mohanam, Hamsadhwani, Kalyani, Shankarabharanam.
+- Epic / cinematic: Kalyani, Shankarabharanam, Keeravani.
+- You may choose one raga for all layers or compatible ragas per layer, but each tune must include its own raga.
+
+AVAILABLE ROOT SHRUTIS
+${Object.keys(roots).join(", ")}
+
+AVAILABLE INSTRUMENTS
+${Object.entries(instrumentGroups)
+  .map(([group, values]) => `${group}: ${values.join(", ")}`)
+  .join("\n")}
+
+SWARA REFERENCE
+${swaraReferenceLines()}
+
+SCORING SCRIPT SYNTAX
+- A script is whitespace-separated tokens.
+- Normal notes: Q W E R T Y U A S D F G H J Z X C V B N M and assignable keys I O P K L { } \\ : ' , . /
+- Use Shift+KEY for komal/tivra variants on non-assignable scale keys.
+- Use Alt+KEY for tivra ma where useful.
+- Rest/silence: -
+- Repeat token: Q*4 means play Q four times.
+- Per-token timing override: Q@600/900 means pace 600ms and hold 900ms for that token. -@900 creates a longer silence.
+- Global pace and hold are also provided per tune. Keep pace usually 220-700 and hold 120-1200.
+- Use only playable script tokens. Do not invent unknown keys.
+
+DEFAULT KEY MAP WHEN ROOT IS C AND OCTAVE SHIFT IS 0
+${keyReferenceLines()}
+
+COMPOSITION RULES
+- Make scripts actually playable in SCORING, not piano sheet notation.
+- Prefer raga-correct notes for each tune.
+- For emotional BGM, use rests and long holds. Avoid too many fast notes unless the genre needs energy.
+- Each tune should include western and swara lines matching the script as closely as possible.
+- If you use drums, script can be simple pulses using the same key syntax.
+- Keep names short and arrangement-friendly.
+- Include a sequence object with clips. Each clip must reference a tune by exact name.
+- Use startMs for timeline start in milliseconds and trackIndex as a zero-based layer number.
+- For loops, use repeat plus gapMs or intervalMs. repeat means duplicate the same clip multiple times.
+- Use overlaps deliberately: a reply can start before the previous phrase finishes, like a film edit.
+- Return a single JSON object only.
+
+EXPECTED JSON SHAPE
+${JSON.stringify(sample, null, 2)}
+
+Now produce the JSON for the user request.`;
+}
+
+function setPromptMode(mode) {
+  const generate = mode === "generate";
+  const load = mode === "load";
+  els.promptGenerateForm.hidden = !generate;
+  els.promptLoadForm.hidden = !load;
+  els.promptOutputPanel.hidden = true;
+  els.promptGenerateMode.classList.toggle("is-active", generate);
+  els.promptLoadMode.classList.toggle("is-active", load);
+  if (generate) els.promptScene.focus();
+  if (load) els.promptJson.focus();
+}
+
+function openPromptModal(mode = "") {
+  els.promptModal.classList.add("is-open");
+  els.promptModal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("modal-open");
+  if (mode) setPromptMode(mode);
+  else {
+    els.promptGenerateForm.hidden = true;
+    els.promptLoadForm.hidden = true;
+    els.promptOutputPanel.hidden = true;
+    els.promptGenerateMode.classList.remove("is-active");
+    els.promptLoadMode.classList.remove("is-active");
+  }
+  requestAnimationFrame(() => els.promptGenerateMode.focus());
+}
+
+function closePromptModal() {
+  els.promptModal.classList.remove("is-open");
+  els.promptModal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("modal-open");
+}
+
+function handlePromptGenerate(event) {
+  event.preventDefault();
+  const selectedInstruments = selectedPromptInstruments();
+  const scene = els.promptScene.value.trim();
+  if (!selectedInstruments.length) {
+    els.nowPlaying.textContent = "Choose at least one instrument";
+    els.promptInstruments.querySelector("input")?.focus();
+    return;
+  }
+  if (selectedInstruments.length > 5) {
+    els.nowPlaying.textContent = "Choose up to five instruments";
+    els.promptInstruments.querySelector('input[name="promptInstrument"]:checked')?.focus();
+    return;
+  }
+  if (!scene) {
+    els.nowPlaying.textContent = "Describe the scene first";
+    els.promptScene.focus();
+    return;
+  }
+  els.promptOutput.value = buildScoringPrompt({
+    genre: selectedPromptGenre(),
+    selectedInstruments,
+    scene,
+  });
+  els.promptOutputPanel.hidden = false;
+  els.promptOutput.focus();
+  els.promptOutput.select();
+  els.nowPlaying.textContent = "Prompt generated";
+}
+
+async function copyGeneratedPrompt() {
+  const value = els.promptOutput.value;
+  if (!value) return;
+  try {
+    await navigator.clipboard.writeText(value);
+    els.nowPlaying.textContent = "Prompt copied";
+  } catch {
+    els.promptOutput.focus();
+    els.promptOutput.select();
+    els.nowPlaying.textContent = "Prompt ready to copy";
+  }
+}
+
+function extractJsonText(value = "") {
+  const trimmed = value
+    .trim()
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/\u00a0/g, " ");
+  if (!trimmed) return "";
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const jsonText = fenced ? fenced[1].trim() : trimmed;
+  const normalized = jsonText.replace(/,\s*([}\]])/g, "$1");
+  const firstObject = normalized.indexOf("{");
+  const firstArray = normalized.indexOf("[");
+  const first =
+    firstObject >= 0 && firstArray >= 0 ? Math.min(firstObject, firstArray) : Math.max(firstObject, firstArray);
+  if (first > 0) return normalized.slice(first);
+  return normalized;
+}
+
+function parseJsonFromPrompt(value = "") {
+  try {
+    return JSON.parse(extractJsonText(value));
+  } catch (error) {
+    throw new Error(`Invalid JSON: ${error.message}`);
+  }
+}
+
+function normalizePromptTune(rawTune = {}, index = 0) {
+  const fallback = defaultLaneContext();
+  const context = {
+    raga: ragas[rawTune.raga] ? rawTune.raga : fallback.raga,
+    instrument: instruments[rawTune.instrument] ? rawTune.instrument : fallback.instrument,
+    root: roots[rawTune.root]
+      ? rawTune.root
+      : roots[rawTune.rootShruti]
+        ? rawTune.rootShruti
+        : roots[rawTune.sruthi]
+          ? rawTune.sruthi
+          : roots[rawTune.shruti]
+            ? rawTune.shruti
+            : fallback.root,
+    octaveShift: Number.isInteger(rawTune.octaveShift) ? rawTune.octaveShift : Number(rawTune.octaveShift) || 0,
+    pace: Math.max(60, Number(rawTune.pace) || fallback.pace),
+    hold: Math.max(30, Number(rawTune.hold) || fallback.hold),
+  };
+  let script = String(rawTune.script || rawTune.keys || rawTune.keyScript || "").trim();
+  if (!script && rawTune.western) script = scriptFromWesternNotation(String(rawTune.western), context);
+  if (!script && rawTune.swaras) script = scriptFromSwaraNotation(String(rawTune.swaras), context);
+  return {
+    name: String(rawTune.name || rawTune.title || `AI Tune ${index + 1}`).trim(),
+    script,
+    ...context,
+  };
+}
+
+function promptTuneCandidates(parsed) {
+  return Array.isArray(parsed)
+    ? parsed
+    : parsed.name && (parsed.script || parsed.keys || parsed.keyScript || parsed.western || parsed.swaras)
+      ? [parsed]
+    : parsed.tunes || parsed.scripts || parsed.layers || parsed.cues || [];
+}
+
+function parsePromptTunes(value) {
+  const parsed = parseJsonFromPrompt(value);
+  const candidates = promptTuneCandidates(parsed);
+  if (!Array.isArray(candidates)) return [];
+  return candidates.map(normalizePromptTune).filter((tune) => tune.script);
+}
+
+function parsePromptPackage(value) {
+  const parsed = parseJsonFromPrompt(value);
+  const candidates = promptTuneCandidates(parsed);
+  return {
+    parsed,
+    tunes: Array.isArray(candidates) ? candidates.map(normalizePromptTune).filter((tune) => tune.script) : [],
+  };
+}
+
+function normalizedClipStartMs(rawClip = {}) {
+  const value =
+    rawClip.startMs ??
+    rawClip.atMs ??
+    rawClip.timeMs ??
+    rawClip.startSec ??
+    rawClip.seconds ??
+    rawClip.start ??
+    rawClip.time;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.endsWith("ms")) return Math.max(0, Number(trimmed.slice(0, -2)) || 0);
+    if (trimmed.endsWith("s")) return Math.max(0, (Number(trimmed.slice(0, -1)) || 0) * 1000);
+  }
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.max(0, rawClip.startSec !== undefined || rawClip.seconds !== undefined ? numeric * 1000 : numeric);
+}
+
+function normalizedClipTrack(rawClip = {}, fallback = 0) {
+  const value = rawClip.trackIndex ?? rawClip.layerIndex ?? rawClip.track ?? rawClip.layer;
+  if (value === undefined || value === null || value === "") return fallback;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.max(0, Math.round(numeric));
+}
+
+function promptClipCandidates(parsed = {}) {
+  const sequence = parsed.sequence || parsed.arrangement || parsed.timelineArrangement || {};
+  return (
+    sequence.clips ||
+    sequence.timelineItems ||
+    sequence.items ||
+    parsed.clips ||
+    parsed.timeline ||
+    parsed.timelineItems ||
+    []
+  );
+}
+
+function resolvePromptClipLane(rawClip = {}, laneMap, lanes) {
+  const key = String(
+    rawClip.tune ||
+      rawClip.tuneName ||
+      rawClip.script ||
+      rawClip.scriptName ||
+      rawClip.lane ||
+      rawClip.laneName ||
+      rawClip.name ||
+      "",
+  ).toLowerCase();
+  return laneMap.get(key) || lanes[Math.max(0, Number(rawClip.tuneIndex ?? rawClip.scriptIndex ?? 0) || 0)] || null;
+}
+
+function buildPromptTimelineItems(parsed, lanes, laneMap) {
+  const clips = promptClipCandidates(parsed);
+  if (!Array.isArray(clips) || !clips.length) {
+    let startMs = 0;
+    return lanes.map((lane, index) => {
+      const item = {
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        laneId: lane.id,
+        startMs,
+        trackIndex: index,
+        muted: false,
+      };
+      startMs += timelineItemDuration(item) + 300;
+      return item;
+    });
+  }
+
+  const items = [];
+  clips.forEach((rawClip, index) => {
+    const lane = resolvePromptClipLane(rawClip, laneMap, lanes);
+    if (!lane) return;
+    const baseItem = {
+      laneId: lane.id,
+      startMs: normalizedClipStartMs(rawClip),
+      trackIndex: normalizedClipTrack(rawClip, index),
+      muted: Boolean(rawClip.muted),
+    };
+    const repeat = Math.max(1, Math.min(64, Math.round(Number(rawClip.repeat ?? rawClip.repeats ?? 1) || 1)));
+    const duration = timelineItemDuration(baseItem);
+    const gapMs = Math.max(0, Number(rawClip.gapMs ?? rawClip.gap ?? 0) || 0);
+    const intervalMs = Math.max(1, Number(rawClip.intervalMs ?? rawClip.everyMs ?? 0) || duration + gapMs);
+    for (let repeatIndex = 0; repeatIndex < repeat; repeatIndex += 1) {
+      items.push({
+        ...baseItem,
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        startMs: Math.max(0, Math.round((baseItem.startMs + repeatIndex * intervalMs) / timelineSnapMs) * timelineSnapMs),
+      });
+    }
+  });
+  return items;
+}
+
+function promptSequenceName(parsed = {}) {
+  const sequence = parsed.sequence || parsed.arrangement || parsed.timelineArrangement || {};
+  return String(sequence.name || parsed.sequenceName || parsed.project || `AI Sequence ${savedSequences.length + 1}`).trim();
+}
+
+function loadPromptJson(event) {
+  event.preventDefault();
+  let payload = null;
+  try {
+    payload = parsePromptPackage(els.promptJson.value);
+  } catch {
+    els.nowPlaying.textContent = "Invalid JSON";
+    els.promptJson.focus();
+    return;
+  }
+  const { parsed, tunes } = payload;
+  if (!tunes.length) {
+    els.nowPlaying.textContent = "No playable tunes found";
+    els.promptJson.focus();
+    return;
+  }
+  syncActiveScriptLane();
+  const lanes = tunes.map((tune) => createScriptLane(tune.name, tune.script, tune));
+  scriptLanes.push(...lanes);
+  const laneMap = new Map(lanes.map((lane) => [lane.name.toLowerCase(), lane]));
+  const nextTimelineItems = buildPromptTimelineItems(parsed, lanes, laneMap);
+  const sequence = normalizeSavedSequence({
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    name: promptSequenceName(parsed),
+    timelineItems: nextTimelineItems,
+    disabledTracks: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+  savedSequences.push(sequence);
+  activeSequenceId = sequence.id;
+  timelineItems = cloneSequenceValue(sequence.timelineItems).map((item) => normalizeTimelineItem(item, scriptLanes));
+  disabledTimelineTracks.clear();
+  activeScriptLaneId = lanes[0].id;
+  pendingDeleteScriptLaneId = "";
+  applyLaneToEditor(lanes[0]);
+  saveScriptLanes();
+  saveTimelineItems();
+  persistSavedSequences();
+  renderScriptCarousel();
+  renderSequenceControls();
+  renderTimeline();
+  saveUserPreferences();
+  closePromptModal();
+  els.promptJson.value = "";
+  els.nowPlaying.textContent = `Loaded ${lanes.length} scripts + ${sequence.name}`;
 }
 
 function editTune(id) {
@@ -2471,7 +2986,7 @@ function bindEvents() {
   });
   document.addEventListener("keydown", (event) => {
     if (event.code === "Space") {
-      if (event.target.classList?.contains("notation-input")) return;
+      if (event.target.closest?.("#promptModal") || event.target.classList?.contains("notation-input")) return;
       event.preventDefault();
       if (!event.repeat) togglePrimaryTransport();
       return;
@@ -2587,6 +3102,29 @@ function bindEvents() {
   els.recordBtn.addEventListener("click", startRecording);
   els.stopBtn.addEventListener("click", stopAll);
   els.exportBtn.addEventListener("click", exportRecording);
+  els.promptBtn.addEventListener("click", () => openPromptModal());
+  els.promptClose.addEventListener("click", closePromptModal);
+  els.promptModal.addEventListener("click", (event) => {
+    if (event.target === els.promptModal) closePromptModal();
+  });
+  els.promptGenerateMode.addEventListener("click", () => setPromptMode("generate"));
+  els.promptLoadMode.addEventListener("click", () => setPromptMode("load"));
+  els.promptGenerateForm.addEventListener("submit", handlePromptGenerate);
+  els.promptLoadForm.addEventListener("submit", loadPromptJson);
+  els.copyPrompt.addEventListener("click", copyGeneratedPrompt);
+  els.promptInstruments.addEventListener("change", (event) => {
+    const selected = [...els.promptInstruments.querySelectorAll('input[name="promptInstrument"]:checked')];
+    if (selected.length <= 5) return;
+    if (event.target?.matches?.('input[name="promptInstrument"]')) {
+      event.target.checked = false;
+    } else {
+      selected.at(-1).checked = false;
+    }
+    els.nowPlaying.textContent = "Choose up to five instruments";
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && els.promptModal.classList.contains("is-open")) closePromptModal();
+  });
   document.querySelectorAll("[data-cue]").forEach((button) => {
     button.addEventListener("click", () => playCue(button.dataset.cue));
   });
@@ -2603,6 +3141,7 @@ function releaseUnlockedNotes() {
 function init() {
   populateSelect(els.raga, Object.keys(ragas));
   populateInstrumentSelect();
+  populatePromptControls();
   populateSelect(els.root, Object.keys(roots));
   populateSelect(els.rhythm, Object.keys(rhythmPatterns));
   const savedPrefs = loadUserPreferences();

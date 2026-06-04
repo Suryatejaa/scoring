@@ -19,6 +19,7 @@
         </div>
         <div class="transport">
           <a class="header-link" href="docs.html">Docs</a>
+          <button id="promptBtn" type="button">Prompt</button>
           <button id="recordBtn" class="danger" type="button">Record</button>
           <button id="stopBtn" type="button">Stop</button>
           <button id="exportBtn" type="button" disabled>Export</button>
@@ -176,6 +177,61 @@
         <button data-cue="mass" type="button">Mass Hit</button>
       </section>
     </main>
+
+    <div id="promptModal" class="modal-shell" aria-hidden="true">
+      <section class="prompt-modal" role="dialog" aria-modal="true" aria-labelledby="promptModalTitle">
+        <div class="modal-head">
+          <div>
+            <p class="eyebrow">AI Composer Bridge</p>
+            <h2 id="promptModalTitle">Prompt</h2>
+          </div>
+          <button id="promptCloseBtn" class="icon-button" type="button" aria-label="Close prompt modal">×</button>
+        </div>
+
+        <div class="prompt-mode-actions">
+          <button id="promptGenerateModeBtn" type="button">Generate</button>
+          <button id="promptLoadModeBtn" type="button">Load</button>
+        </div>
+
+        <form id="promptGenerateForm" class="prompt-form" hidden>
+          <fieldset class="genre-checks">
+            <span>Genre</span>
+            <div id="promptGenreSelect" class="genre-check-grid"></div>
+          </fieldset>
+          <fieldset class="instrument-checks">
+            <span>Instruments</span>
+            <div id="promptInstrumentSelect" class="instrument-check-grid"></div>
+          </fieldset>
+          <label class="full">
+            <span>Scene / Situation</span>
+            <textarea
+              id="promptSceneInput"
+              spellcheck="true"
+              placeholder="Example: a mother silently watches her son leave home, sad but hopeful"
+            ></textarea>
+          </label>
+          <button class="primary-action" type="submit">Generate</button>
+        </form>
+
+        <div id="promptOutputPanel" class="prompt-output" hidden>
+          <label for="promptOutput">Generated LLM Prompt</label>
+          <textarea id="promptOutput" readonly spellcheck="false"></textarea>
+          <button id="copyPromptBtn" type="button">Copy Prompt</button>
+        </div>
+
+        <form id="promptLoadForm" class="prompt-form prompt-load-form" hidden>
+          <label class="full">
+            <span>Paste LLM JSON</span>
+            <textarea
+              id="promptJsonInput"
+              spellcheck="false"
+              placeholder='{"tunes":[{"name":"Sad Bansuri","raga":"Keeravani","root":"C","instrument":"Bansuri","pace":360,"hold":420,"script":"Q W Shift+E - R"}]}'
+            ></textarea>
+          </label>
+          <button class="primary-action" type="submit">Load Scripts</button>
+        </form>
+      </section>
+    </div>
 
     <script src="app.js"></script>
   </body>

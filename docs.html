@@ -24,6 +24,8 @@
         <a href="#scripts">Scripts</a>
         <a href="#notation">Notation</a>
         <a href="#timeline">Timeline</a>
+        <a href="#ai-prompt">AI Prompt</a>
+        <a href="#suggestions">Suggestions</a>
         <a href="#example">Example</a>
         <a href="#compose">Compose</a>
       </nav>
@@ -149,6 +151,197 @@
           <li>Use the triangle playhead and scrub bar to jump through the arrangement.</li>
           <li>When Canvas is active, <strong>Space</strong> plays or pauses the timeline.</li>
         </ul>
+      </section>
+
+      <section id="ai-prompt" class="docs-section">
+        <p class="eyebrow">AI assistant workflow</p>
+        <h2>Use AI to Generate Music for SCORING</h2>
+        <p>
+          The <strong>Prompt</strong> button helps you ask ChatGPT or Claude for music that SCORING can
+          actually load. Use it when you know the scene emotion but do not know which notes, raga,
+          or instruments to choose.
+        </p>
+
+        <div class="docs-grid two">
+          <article>
+            <h3>Generate an AI prompt</h3>
+            <ol>
+              <li>Open SCORING and click <strong>Prompt</strong> in the header.</li>
+              <li>Choose <strong>Generate</strong>.</li>
+              <li>Select one genre and 1 to 5 instruments.</li>
+              <li>Describe the scene in normal words, for example: <em>his best friend is getting married to another guy</em>.</li>
+              <li>Click <strong>Generate</strong>, then copy the generated prompt.</li>
+              <li>Paste it into ChatGPT or Claude.</li>
+            </ol>
+          </article>
+          <article>
+            <h3>Load the AI result</h3>
+            <ol>
+              <li>Ask the AI to return only JSON.</li>
+              <li>Copy the full JSON response.</li>
+              <li>Come back to SCORING and click <strong>Prompt</strong>.</li>
+              <li>Choose <strong>Load</strong>.</li>
+              <li>Paste the JSON and click <strong>Load Scripts</strong>.</li>
+              <li>SCORING creates the scripts, a new sequence, and arranged timeline clips.</li>
+            </ol>
+          </article>
+        </div>
+
+        <table class="docs-table suggestion-table">
+          <thead>
+            <tr>
+              <th>AI JSON field</th>
+              <th>What it does in SCORING</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>tunes</code></td>
+              <td>Creates script lanes with raga, root shruti, instrument, pace, hold, and key script.</td>
+            </tr>
+            <tr>
+              <td><code>sequence.clips</code></td>
+              <td>Creates a timeline arrangement from the generated scripts.</td>
+            </tr>
+            <tr>
+              <td><code>startMs</code></td>
+              <td>Controls when a clip starts on the timeline.</td>
+            </tr>
+            <tr>
+              <td><code>trackIndex</code></td>
+              <td>Controls which vertical layer the clip appears on.</td>
+            </tr>
+            <tr>
+              <td><code>repeat</code>, <code>gapMs</code>, <code>intervalMs</code></td>
+              <td>Creates looped or repeated clips automatically.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="docs-callout">
+          <h3>Prompt tip</h3>
+          <p>
+            Be specific about the scene, not music theory. Write things like <strong>slow sad breakup,
+            no drums, should feel empty</strong> or <strong>hero entry with village drums and mass impact</strong>.
+            The clearer the emotion and situation, the better the AI can choose instruments and arrange clips.
+          </p>
+        </div>
+      </section>
+
+      <section id="suggestions" class="docs-section">
+        <p class="eyebrow">Choosing sounds</p>
+        <h2>Instrument and Mood Suggestions</h2>
+        <p>
+          If you are not from a music background, start with the scene feeling first. Pick one lead
+          instrument, one support layer, and one optional texture. Too many layers can make the cue
+          feel less emotional.
+        </p>
+
+        <div class="docs-grid two suggestion-grid">
+          <article>
+            <h3>Sad breakup / heart melting</h3>
+            <p><strong>Lead:</strong> Santoor, Veena, Bansuri, or Sarangi.</p>
+            <p><strong>Support:</strong> Harmonium or Film Strings with long holds.</p>
+            <p><strong>Try:</strong> Keeravani or Natabhairavi, root C or D, pace 340-520, hold 500-1200.</p>
+          </article>
+          <article>
+            <h3>Lonely memory / flashback</h3>
+            <p><strong>Lead:</strong> Bansuri, Santoor, or soft Piano.</p>
+            <p><strong>Support:</strong> Synth Pad or Film Strings very low in the background.</p>
+            <p><strong>Try:</strong> Hindolam, Keeravani, or Mohanam, pace 420-700, more rests.</p>
+          </article>
+          <article>
+            <h3>Suspense / hidden danger</h3>
+            <p><strong>Lead:</strong> Synth Pad, Film Strings, or low Bansuri.</p>
+            <p><strong>Support:</strong> Cinematic Drums as sparse hits, not continuous rhythm.</p>
+            <p><strong>Try:</strong> Keeravani, Charukesi, or Natabhairavi, pace 500-900, long silences.</p>
+          </article>
+          <article>
+            <h3>Devotional / spiritual</h3>
+            <p><strong>Lead:</strong> Veena, Bansuri, Harmonium, or Sitar.</p>
+            <p><strong>Support:</strong> Tanpura Drone, soft Tabla, or String Ensemble.</p>
+            <p><strong>Try:</strong> Mohanam, Hamsadhwani, Kalyani, root C or G, steady pace 320-520.</p>
+          </article>
+          <article>
+            <h3>Romantic / gentle warmth</h3>
+            <p><strong>Lead:</strong> Bansuri, Santoor, Piano, or Violin.</p>
+            <p><strong>Support:</strong> String Ensemble or Synth Pad with slow movement.</p>
+            <p><strong>Try:</strong> Kalyani, Mohanam, or Shankarabharanam, hold 400-900.</p>
+          </article>
+          <article>
+            <h3>Mass / hero entry</h3>
+            <p><strong>Lead:</strong> Sitar, Veena, or Film Strings for the hook.</p>
+            <p><strong>Support:</strong> Cinematic Drums, Dholak, or Mridangam.</p>
+            <p><strong>Try:</strong> Shankarabharanam, Kalyani, or Mohanam, pace 180-360, strong repeats.</p>
+          </article>
+        </div>
+
+        <table class="docs-table suggestion-table">
+          <thead>
+            <tr>
+              <th>Instrument</th>
+              <th>Best for</th>
+              <th>Avoid when</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Santoor</strong></td>
+              <td>Soft sadness, memory, emotional sparkle, delicate love.</td>
+              <td>The scene needs heavy power or aggressive rhythm.</td>
+            </tr>
+            <tr>
+              <td><strong>Bansuri</strong></td>
+              <td>Loneliness, innocence, village feel, spiritual calm.</td>
+              <td>You need sharp attack or very dense fast notes.</td>
+            </tr>
+            <tr>
+              <td><strong>Veena</strong></td>
+              <td>Classical emotion, devotion, mature sadness, graceful lead motifs.</td>
+              <td>The cue should feel modern, cold, or sci-fi.</td>
+            </tr>
+            <tr>
+              <td><strong>Sitar</strong></td>
+              <td>Drama, reply phrases, tension, heroic or traditional color.</td>
+              <td>The scene needs very soft background only.</td>
+            </tr>
+            <tr>
+              <td><strong>Harmonium</strong></td>
+              <td>Long emotional bed, devotional base, old-memory feeling.</td>
+              <td>You use it too loud; it can cover the lead melody.</td>
+            </tr>
+            <tr>
+              <td><strong>Film Strings</strong></td>
+              <td>Cinematic lift, pain under dialogue, wide emotional support.</td>
+              <td>The cue should feel intimate and small.</td>
+            </tr>
+            <tr>
+              <td><strong>Synth Pad</strong></td>
+              <td>Suspense, dream, night scenes, background atmosphere.</td>
+              <td>You need a natural Indian acoustic sound.</td>
+            </tr>
+            <tr>
+              <td><strong>Tabla / Mridangam / Dholak</strong></td>
+              <td>Movement, devotional pulse, folk feel, build-up.</td>
+              <td>Sad scenes where silence is carrying the emotion.</td>
+            </tr>
+            <tr>
+              <td><strong>Cinematic Drums</strong></td>
+              <td>Mass moments, shock hits, tension rise, trailer-like impact.</td>
+              <td>Romantic or tender scenes.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="docs-callout">
+          <h3>Simple starting recipe</h3>
+          <p>
+            For most emotional short-film scenes, start with <strong>Santoor + Keeravani + C</strong>,
+            pace around <strong>360</strong>, hold around <strong>500</strong>. Add <strong>Film Strings</strong>
+            only after the melody works. If it feels too bright, try Natabhairavi. If it feels too heavy,
+            try Mohanam.
+          </p>
+        </div>
       </section>
 
       <section id="example" class="docs-section">
