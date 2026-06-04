@@ -200,6 +200,7 @@ const timelineMinPxPerMs = 0.035;
 const timelineMaxPxPerMs = 0.28;
 const timelineSnapMs = 100;
 const timelineTrackHeight = 70;
+const timelineToolbarWidth = 48;
 
 let audioCtx;
 let master;
@@ -225,7 +226,9 @@ let editingScriptLaneId = "";
 let pendingDeleteScriptLaneId = "";
 let syncingNotation = false;
 let timelineItems = [];
+let disabledTimelineTracks = new Set();
 let timelineDrag = null;
+let openTimelineMenuId = "";
 let timelinePlaying = false;
 let timelinePlayheadMs = 0;
 let timelineStartedAt = 0;
@@ -516,6 +519,7 @@ function normalizeTimelineItem(item, lanes = scriptLanes) {
     laneId: item?.laneId || lanes[0]?.id || "",
     startMs: Math.max(0, Number(item?.startMs) || 0),
     trackIndex: Math.max(0, Number.isInteger(item?.trackIndex) ? item.trackIndex : laneIndex),
+    muted: Boolean(item?.muted),
   };
 }
 
@@ -533,6 +537,9 @@ function normalizeSavedSequence(sequence = {}, index = 0) {
           .filter((item) => item?.laneId && scriptLanes.some((lane) => lane.id === item.laneId))
           .map((item) => normalizeTimelineItem(item, scriptLanes))
       : [],
+    disabledTracks: Array.isArray(sequence.disabledTracks)
+      ? sequence.disabledTracks.map((track) => String(Math.max(0, Number(track) || 0)))
+      : [],
     createdAt: sequence.createdAt || new Date().toISOString(),
     updatedAt: sequence.updatedAt || new Date().toISOString(),
   };
@@ -544,6 +551,7 @@ function currentSequenceSnapshot(name = els.sequenceName?.value.trim()) {
       id: activeSequenceId || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
       name: name || activeSequence()?.name || `Sequence ${savedSequences.length + 1}`,
       timelineItems: cloneSequenceValue(timelineItems),
+      disabledTracks: [...disabledTimelineTracks],
       createdAt: activeSequence()?.createdAt,
       updatedAt: new Date().toISOString(),
     },
@@ -583,6 +591,7 @@ function applySequence(sequence) {
   suppressSequencePersistence = true;
   stopSequence(false);
   timelineItems = cloneSequenceValue(normalized.timelineItems).map((item) => normalizeTimelineItem(item, scriptLanes));
+  disabledTimelineTracks = new Set(normalized.disabledTracks);
   activeSequenceId = normalized.id;
   saveTimelineItems();
   suppressSequencePersistence = false;
@@ -653,6 +662,7 @@ function createNewSequence() {
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     name,
     timelineItems: [],
+    disabledTracks: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
@@ -916,12 +926,17 @@ function updateTimelineZoomUi() {
 function setTimelineZoom(nextScale) {
   const scroll = els.timelineScroll;
   const previousScale = timelinePxPerMs;
-  const centerMs = scroll ? (scroll.scrollLeft + scroll.clientWidth / 2) / previousScale : timelinePlayheadMs;
+  const centerMs = scroll
+    ? Math.max(0, (scroll.scrollLeft + scroll.clientWidth / 2 - timelineToolbarWidth) / previousScale)
+    : timelinePlayheadMs;
   timelinePxPerMs = clampTimelineZoom(nextScale);
   saveTimelineZoom();
   renderTimeline();
   if (scroll) {
-    scroll.scrollLeft = Math.max(0, Math.round(centerMs * timelinePxPerMs - scroll.clientWidth / 2));
+    scroll.scrollLeft = Math.max(
+      0,
+      Math.round(timelineToolbarWidth + centerMs * timelinePxPerMs - scroll.clientWidth / 2),
+    );
   }
 }
 
@@ -930,7 +945,7 @@ function updateTimelineTransport() {
   timelinePlayheadMs = Math.min(timelinePlayheadMs, length);
   els.timelineScrub.max = String(length);
   els.timelineScrub.value = String(Math.round(timelinePlayheadMs / timelineSnapMs) * timelineSnapMs);
-  els.timelinePlayhead.style.left = `${Math.round(timelinePlayheadMs * timelinePxPerMs)}px`;
+  els.timelinePlayhead.style.left = `${timelineToolbarWidth + Math.round(timelinePlayheadMs * timelinePxPerMs)}px`;
   els.timelineTime.textContent = formatTimelineTime(timelinePlayheadMs);
   els.playTimeline.textContent = timelinePlaying ? "Ⅱ" : "▶";
   els.playTimeline.setAttribute("aria-label", timelinePlaying ? "Pause timeline" : "Play timeline");
@@ -941,11 +956,11 @@ function updateTimelineTransport() {
 function renderTimelineRuler(lengthMs) {
   const width = Math.max(800, Math.round(lengthMs * timelinePxPerMs));
   els.timelineRuler.innerHTML = "";
-  els.timelineRuler.style.width = `${width}px`;
+  els.timelineRuler.style.width = `${width + timelineToolbarWidth}px`;
   for (let ms = 0; ms <= lengthMs; ms += 1000) {
     const tick = document.createElement("span");
     tick.className = "timeline-tick";
-    tick.style.left = `${Math.round(ms * timelinePxPerMs)}px`;
+    tick.style.left = `${timelineToolbarWidth + Math.round(ms * timelinePxPerMs)}px`;
     tick.textContent = `${ms / 1000}s`;
     els.timelineRuler.append(tick);
   }
@@ -954,6 +969,59 @@ function renderTimelineRuler(lengthMs) {
 function timelineVisibleTracks() {
   const tracks = [...new Set(timelineItems.map((item) => Number(item.trackIndex) || 0))].sort((a, b) => a - b);
   return tracks.length ? tracks : [0];
+}
+
+function timelineTrackKey(track) {
+  return String(Math.max(0, Number(track) || 0));
+}
+
+function isTimelineTrackDisabled(track) {
+  return disabledTimelineTracks.has(timelineTrackKey(track));
+}
+
+function toggleTimelineTrack(track) {
+  const key = timelineTrackKey(track);
+  if (disabledTimelineTracks.has(key)) {
+    disabledTimelineTracks.delete(key);
+  } else {
+    disabledTimelineTracks.add(key);
+    stopTimelineTrackNotes(track);
+  }
+  persistActiveSequenceSnapshot();
+  renderTimeline();
+}
+
+function stopTimelineTrackNotes(track) {
+  const prefix = `track-${timelineTrackKey(track)}:`;
+  [...activeNotes.keys()].forEach((key) => {
+    if (key.startsWith(prefix)) stopNote(key);
+  });
+}
+
+function isTimelineClipMuted(item) {
+  return Boolean(item?.muted);
+}
+
+function stopTimelineClipNotes(id) {
+  const token = `:clip-${id}:`;
+  [...activeNotes.keys()].forEach((key) => {
+    if (key.includes(token)) stopNote(key);
+  });
+}
+
+function toggleTimelineItemMute(id) {
+  const item = timelineItems.find((timelineItem) => timelineItem.id === id);
+  if (!item) return;
+  item.muted = !item.muted;
+  openTimelineMenuId = "";
+  if (item.muted) stopTimelineClipNotes(item.id);
+  saveTimelineItems();
+  renderTimeline();
+}
+
+function toggleTimelineItemMenu(id) {
+  openTimelineMenuId = openTimelineMenuId === id ? "" : id;
+  renderTimeline();
 }
 
 function renderTimeline() {
@@ -965,13 +1033,34 @@ function renderTimeline() {
   const visibleTrackMap = new Map(visibleTracks.map((track, index) => [track, index]));
   renderTimelineRuler(lengthMs);
   els.timelineTrack.innerHTML = "";
-  els.timelineTrack.style.width = `${width}px`;
+  els.timelineTrack.style.width = `${width + timelineToolbarWidth}px`;
   els.timelineTrack.style.height = `${trackHeight}px`;
   els.timelineScroll.style.setProperty("--timeline-track-count", String(trackCount));
   updateTimelineTransport();
   visibleTracks.forEach((track, index) => {
+    const disabled = isTimelineTrackDisabled(track);
+    const toolbar = document.createElement("div");
+    toolbar.className = "timeline-track-toolbar";
+
+    const toggle = document.createElement("button");
+    toggle.className = `timeline-track-toggle${disabled ? " is-disabled" : ""}`;
+    toggle.type = "button";
+    toggle.setAttribute("aria-label", `${disabled ? "Enable" : "Disable"} track ${track + 1}`);
+    toggle.title = disabled ? "Muted" : "Playing";
+
+    const icon = document.createElement("img");
+    icon.alt = "";
+    icon.src = disabled ? "assets/icons/mute.svg" : "assets/icons/unmute.svg";
+    toggle.append(icon);
+    toggle.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleTimelineTrack(track);
+    });
+    toolbar.append(toggle);
+    els.timelineTrack.append(toolbar);
+
     const label = document.createElement("div");
-    label.className = "timeline-track-label";
+    label.className = `timeline-track-label${disabled ? " is-disabled" : ""}`;
     label.style.top = `${index * timelineTrackHeight + 6}px`;
     label.textContent = scriptLanes[track] ? normalizeScriptLane(scriptLanes[track], track).name : `Layer ${track + 1}`;
     els.timelineTrack.append(label);
@@ -992,10 +1081,13 @@ function renderTimeline() {
       if (!lane) return;
       const context = normalizeScriptLane(lane);
       const duration = timelineItemDuration(item);
+      const disabled = isTimelineTrackDisabled(item.trackIndex);
+      const muted = isTimelineClipMuted(item);
+      const menuOpen = openTimelineMenuId === item.id;
       const block = document.createElement("div");
-      block.className = "timeline-item";
+      block.className = `timeline-item${disabled || muted ? " is-disabled" : ""}${muted ? " is-muted" : ""}${menuOpen ? " has-open-menu" : ""}`;
       block.dataset.timelineItem = item.id;
-      block.style.left = `${Math.round(item.startMs * timelinePxPerMs)}px`;
+      block.style.left = `${timelineToolbarWidth + Math.round(item.startMs * timelinePxPerMs)}px`;
       block.style.top = `${10 + (visibleTrackMap.get(Number(item.trackIndex) || 0) ?? 0) * timelineTrackHeight}px`;
       block.style.width = `${Math.max(120, Math.round(duration * timelinePxPerMs))}px`;
       block.innerHTML = `
@@ -1005,6 +1097,53 @@ function renderTimeline() {
         </div>
       `;
 
+      const menu = document.createElement("div");
+      menu.className = "timeline-item-menu";
+
+      const menuButton = document.createElement("button");
+      menuButton.className = "timeline-menu-toggle";
+      menuButton.type = "button";
+      menuButton.title = "Clip actions";
+      menuButton.setAttribute("aria-label", `Open actions for ${context.name}`);
+      menuButton.setAttribute("aria-expanded", String(menuOpen));
+      menuButton.innerHTML = "<span></span><span></span><span></span>";
+      menuButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        toggleTimelineItemMenu(item.id);
+      });
+
+      const actions = document.createElement("div");
+      actions.className = "timeline-item-actions";
+
+      const muteButton = document.createElement("button");
+      muteButton.className = `timeline-clip-toggle${muted ? " is-disabled" : ""}`;
+      muteButton.type = "button";
+      muteButton.title = muted ? "Muted" : "Playing";
+      muteButton.setAttribute("aria-label", `${muted ? "Unmute" : "Mute"} ${context.name}`);
+      const muteIcon = document.createElement("img");
+      muteIcon.alt = "";
+      muteIcon.src = muted ? "assets/icons/mute.svg" : "assets/icons/unmute.svg";
+      muteButton.append(muteIcon);
+      muteButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        toggleTimelineItemMute(item.id);
+      });
+
+      const copyButton = document.createElement("button");
+      copyButton.className = "timeline-copy";
+      copyButton.type = "button";
+      copyButton.title = "Duplicate clip";
+      copyButton.setAttribute("aria-label", `Duplicate ${context.name}`);
+      const copyIcon = document.createElement("img");
+      copyIcon.alt = "";
+      copyIcon.src = "assets/icons/copy.svg";
+      copyButton.append(copyIcon);
+      copyButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        openTimelineMenuId = "";
+        duplicateTimelineItem(item.id);
+      });
+
       const deleteButton = document.createElement("button");
       deleteButton.className = "timeline-delete";
       deleteButton.type = "button";
@@ -1012,11 +1151,18 @@ function renderTimeline() {
       deleteButton.setAttribute("aria-label", `Remove ${context.name} from timeline`);
       deleteButton.addEventListener("click", (event) => {
         event.stopPropagation();
+        openTimelineMenuId = "";
         deleteTimelineItem(item.id);
       });
 
-      block.append(deleteButton);
-      block.addEventListener("click", () => switchScriptLane(item.laneId));
+      actions.append(muteButton, copyButton, deleteButton);
+      menu.append(menuButton, actions);
+      block.append(menu);
+      block.addEventListener("click", () => {
+        openTimelineMenuId = "";
+        switchScriptLane(item.laneId);
+        renderTimeline();
+      });
       block.addEventListener("pointerdown", (event) => startTimelineDrag(event, item.id));
       els.timelineTrack.append(block);
     });
@@ -1042,14 +1188,32 @@ function addTimelineItem() {
 }
 
 function deleteTimelineItem(id) {
+  stopTimelineClipNotes(id);
+  if (openTimelineMenuId === id) openTimelineMenuId = "";
   timelineItems = timelineItems.filter((item) => item.id !== id);
   saveTimelineItems();
   renderTimeline();
 }
 
+function duplicateTimelineItem(id) {
+  const item = timelineItems.find((timelineItem) => timelineItem.id === id);
+  if (!item) return;
+  const duration = timelineItemDuration(item);
+  timelineItems.push({
+    ...item,
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    startMs: Math.max(0, Math.round((item.startMs + duration) / timelineSnapMs) * timelineSnapMs),
+  });
+  openTimelineMenuId = "";
+  saveTimelineItems();
+  renderTimeline();
+  els.nowPlaying.textContent = "Clip duplicated";
+}
+
 function clearTimeline() {
   stopSequence(false);
   timelineItems = [];
+  disabledTimelineTracks.clear();
   timelinePlayheadMs = 0;
   saveTimelineItems();
   renderTimeline();
@@ -1061,6 +1225,7 @@ function startTimelineDrag(event, id) {
   const item = timelineItems.find((timelineItem) => timelineItem.id === id);
   if (!item) return;
   event.preventDefault();
+  openTimelineMenuId = "";
   event.currentTarget.setPointerCapture(event.pointerId);
   timelineDrag = {
     id,
@@ -1965,6 +2130,7 @@ function playSequence() {
 function timelineScheduledEvents(startOffsetMs = timelinePlayheadMs) {
   const events = [];
   timelineItems.forEach((item) => {
+    if (isTimelineTrackDisabled(item.trackIndex) || isTimelineClipMuted(item)) return;
     const lane = scriptLanes.find((scriptLane) => scriptLane.id === item.laneId);
     if (!lane) return;
     const snapshot = lanePlaybackSnapshot(lane);
@@ -1975,7 +2141,9 @@ function timelineScheduledEvents(startOffsetMs = timelinePlayheadMs) {
       if (!event.rest && absoluteMs + event.hold >= startOffsetMs) {
         events.push({
           event: { ...event, hold: remainingHold || event.hold },
-          laneId: `${item.id}:${index}`,
+          laneId: `track-${timelineTrackKey(item.trackIndex)}:clip-${item.id}`,
+          clipId: item.id,
+          trackIndex: item.trackIndex,
           index,
           context: snapshot.context,
           atMs: Math.max(0, absoluteMs - startOffsetMs),
@@ -2016,6 +2184,8 @@ function playTimeline() {
   events.forEach((scheduled) => {
     const timer = setTimeout(() => {
       sequenceTimers = sequenceTimers.filter((item) => item !== timer);
+      const item = timelineItems.find((timelineItem) => timelineItem.id === scheduled.clipId);
+      if (!item || isTimelineTrackDisabled(scheduled.trackIndex) || isTimelineClipMuted(item)) return;
       playSequenceEvent(scheduled.event, scheduled.laneId, scheduled.index, scheduled.context);
     }, scheduled.atMs);
     sequenceTimers.push(timer);

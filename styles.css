@@ -555,10 +555,12 @@ input[type="text"] {
   overflow-x: auto;
   overflow-y: auto;
   overscroll-behavior-x: contain;
+  --timeline-toolbar-width: 48px;
   border: 1px solid rgba(54, 60, 67, 0.72);
   border-radius: 7px;
   background:
-    linear-gradient(90deg, rgba(79, 180, 167, 0.16) 1px, transparent 1px) 0 0 / 80px 100%,
+    linear-gradient(90deg, rgba(79, 180, 167, 0.16) 1px, transparent 1px) var(--timeline-toolbar-width) 0 / 80px 100%,
+    linear-gradient(90deg, rgba(10, 12, 14, 0.98), rgba(10, 12, 14, 0.82)) 0 0 / var(--timeline-toolbar-width) 100% no-repeat,
     rgba(10, 12, 14, 0.76);
 }
 
@@ -566,7 +568,7 @@ input[type="text"] {
   content: "";
   position: absolute;
   top: 6px;
-  left: 8px;
+  left: var(--timeline-toolbar-width);
   right: 8px;
   height: 20px;
   border: 1px solid rgba(170, 164, 154, 0.24);
@@ -580,8 +582,8 @@ input[type="text"] {
 .timeline-transport input[type="range"] {
   position: absolute;
   top: 0;
-  left: 8px;
-  width: calc(100% - 16px);
+  left: var(--timeline-toolbar-width);
+  width: calc(100% - var(--timeline-toolbar-width) - 8px);
   height: 32px;
   margin: 0;
   opacity: 0.001;
@@ -702,9 +704,9 @@ body.canvas-view {
 
 .timeline-track-label {
   position: absolute;
-  left: 8px;
+  left: calc(var(--timeline-toolbar-width) + 8px);
   z-index: 1;
-  max-width: 160px;
+  max-width: 180px;
   overflow: hidden;
   color: rgba(170, 164, 154, 0.58);
   font-size: 0.62rem;
@@ -712,7 +714,47 @@ body.canvas-view {
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+.timeline-track-label.is-disabled {
+  color: rgba(170, 164, 154, 0.32);
+}
+
+.timeline-track-toolbar {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  display: grid;
+  width: var(--timeline-toolbar-width);
+  height: 70px;
+  place-items: start center;
+  padding-top: 20px;
+  border-right: 1px solid rgba(79, 180, 167, 0.18);
+  background: linear-gradient(90deg, rgba(10, 12, 14, 0.98), rgba(10, 12, 14, 0.86));
+  pointer-events: auto;
+}
+
+.timeline-track-toggle {
+  display: grid;
+  width: 26px;
+  min-height: 26px;
+  place-items: center;
+  padding: 0;
+  border-color: rgba(79, 180, 167, 0.42);
+  border-radius: 7px;
+  background: rgba(17, 20, 22, 0.88);
+}
+
+.timeline-track-toggle img {
+  display: block;
+  width: 16px;
+  height: 16px;
   pointer-events: none;
+}
+
+.timeline-track-toggle.is-disabled {
+  border-color: rgba(170, 164, 154, 0.26);
+  color: rgba(170, 164, 154, 0.46);
 }
 
 .timeline-item {
@@ -731,6 +773,15 @@ body.canvas-view {
   color: var(--text);
   cursor: grab;
   user-select: none;
+}
+
+.timeline-item.is-disabled {
+  opacity: 0.34;
+  filter: grayscale(0.8);
+}
+
+.timeline-item.is-muted {
+  border-style: dashed;
 }
 
 .timeline-item:active {
@@ -755,10 +806,87 @@ body.canvas-view {
   font-weight: 800;
 }
 
-.timeline-delete {
+.timeline-item-menu {
+  position: relative;
+  display: grid;
+  place-items: center;
+  justify-self: end;
+}
+
+.timeline-menu-toggle {
+  display: grid;
   width: 28px;
   min-height: 28px;
+  gap: 3px;
+  place-content: center;
   padding: 0;
+  border-color: rgba(79, 180, 167, 0.42);
+}
+
+.timeline-menu-toggle span {
+  display: block;
+  width: 13px;
+  height: 2px;
+  border-radius: 999px;
+  background: #eee9df;
+}
+
+.timeline-item-actions {
+  position: absolute;
+  top: 50%;
+  right: 34px;
+  z-index: 8;
+  display: none;
+  gap: 4px;
+  align-items: center;
+  padding: 4px;
+  border: 1px solid rgba(54, 60, 67, 0.88);
+  border-radius: 7px;
+  background: rgba(17, 20, 22, 0.96);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.34);
+  transform: translateY(-50%);
+}
+
+.timeline-item.has-open-menu {
+  z-index: 9;
+}
+
+.timeline-item.has-open-menu .timeline-item-actions {
+  display: inline-flex;
+}
+
+.timeline-clip-toggle,
+.timeline-copy,
+.timeline-delete {
+  display: grid;
+  width: 28px;
+  min-height: 28px;
+  place-items: center;
+  padding: 0;
+}
+
+.timeline-clip-toggle,
+.timeline-copy {
+  border-color: rgba(79, 180, 167, 0.42);
+}
+
+.timeline-clip-toggle img,
+.timeline-copy img {
+  display: block;
+  width: 15px;
+  height: 15px;
+  pointer-events: none;
+}
+
+.timeline-copy img {
+  filter: invert(76%) sepia(20%) saturate(920%) hue-rotate(126deg) brightness(89%) contrast(86%);
+}
+
+.timeline-clip-toggle.is-disabled {
+  border-color: rgba(170, 164, 154, 0.28);
+}
+
+.timeline-delete {
   border-color: rgba(215, 101, 93, 0.48);
   color: #ffd8d5;
 }
